@@ -2,18 +2,30 @@ import discord
 from discord.ext import commands
 import os
 
-TOKEN = os.getenv("DISCORD_TOKEN")
+# Get the bot token from Wispbyte
+# Supports either DISCORD_TOKEN or TOKEN
+TOKEN = os.getenv("DISCORD_TOKEN") or os.getenv("TOKEN")
 
 intents = discord.Intents.default()
 intents.guilds = True
 
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(
+    command_prefix="!",
+    intents=intents
+)
 
 
-@bot.tree.command(name="setup", description="Set up the Crack an Egg server")
+# ==========================================
+# /setup
+# ==========================================
+
+@bot.tree.command(
+    name="setup",
+    description="Set up the Crack an Egg server"
+)
 async def setup(interaction: discord.Interaction):
 
-    # Only the server owner can use /setup
+    # Make sure this is being used inside a server
     if interaction.guild is None:
         await interaction.response.send_message(
             "❌ This command can only be used in a server.",
@@ -21,6 +33,7 @@ async def setup(interaction: discord.Interaction):
         )
         return
 
+    # Only the server owner can use /setup
     if interaction.guild.owner_id != interaction.user.id:
         await interaction.response.send_message(
             "❌ Only the server owner can use this command.",
@@ -32,9 +45,9 @@ async def setup(interaction: discord.Interaction):
 
     guild = interaction.guild
 
-    # =========================
+    # ==========================================
     # ROLES
-    # =========================
+    # ==========================================
 
     roles = [
         ("Owner", discord.Colour.red()),
@@ -43,22 +56,28 @@ async def setup(interaction: discord.Interaction):
         ("Member", discord.Colour.green())
     ]
 
+    created_roles = 0
+
     for role_name, colour in roles:
+
         existing_role = discord.utils.get(
             guild.roles,
             name=role_name
         )
 
         if existing_role is None:
+
             await guild.create_role(
                 name=role_name,
                 colour=colour,
                 reason="Crack an Egg server setup"
             )
 
-    # =========================
+            created_roles += 1
+
+    # ==========================================
     # CATEGORIES + CHANNELS
-    # =========================
+    # ==========================================
 
     categories = {
 
@@ -84,28 +103,37 @@ async def setup(interaction: discord.Interaction):
             "🚨・reports",
             "📑・mod-logs"
         ]
+
     }
 
-    # =========================
-    # CREATE EVERYTHING
-    # =========================
+    created_categories = 0
+    created_channels = 0
+
+    # ==========================================
+    # CREATE CATEGORIES
+    # ==========================================
 
     for category_name, channel_list in categories.items():
 
-        # Find category if it already exists
         category = discord.utils.get(
             guild.categories,
             name=category_name
         )
 
-        # Otherwise create it
+        # Create category if it doesn't exist
         if category is None:
+
             category = await guild.create_category(
                 category_name,
                 reason="Crack an Egg server setup"
             )
 
-        # Create channels
+            created_categories += 1
+
+        # ==========================================
+        # CREATE CHANNELS
+        # ==========================================
+
         for channel_name in channel_list:
 
             existing_channel = discord.utils.get(
@@ -113,6 +141,7 @@ async def setup(interaction: discord.Interaction):
                 name=channel_name
             )
 
+            # Don't duplicate existing channels
             if existing_channel is not None:
                 continue
 
@@ -134,47 +163,67 @@ async def setup(interaction: discord.Interaction):
                     reason="Crack an Egg server setup"
                 )
 
+            created_channels += 1
+
+    # ==========================================
+    # FINISHED
+    # ==========================================
+
     await interaction.followup.send(
         "🥚 **Crack an Egg setup complete!**\n\n"
-        "Created:\n"
-        "👑 Owner\n"
-        "🛡️ Admin\n"
-        "🔨 Mod\n"
-        "👤 Member\n\n"
-        "📁 3 categories\n"
-        "💬 All channels\n\n"
-        "⚙️ Permissions were NOT changed.",
+        f"👑 Roles created: **{created_roles}**\n"
+        f"📁 Categories created: **{created_categories}**\n"
+        f"💬 Channels created: **{created_channels}**\n\n"
+        "⚙️ **Permissions were NOT changed.**",
         ephemeral=True
     )
 
 
-# =========================
+# ==========================================
 # BOT READY
-# =========================
+# ==========================================
 
 @bot.event
 async def on_ready():
+
+    print("")
+    print("================================")
+    print(f"🥚 Logged in as: {bot.user}")
+    print(f"🆔 Bot ID: {bot.user.id}")
+    print("================================")
 
     try:
 
         synced = await bot.tree.sync()
 
-        print(f"Logged in as {bot.user}")
-        print(f"Synced {len(synced)} slash command(s)")
+        print(f"✅ Synced {len(synced)} slash command(s)")
+        print("🥚 Crack an Egg bot is online!")
 
     except Exception as error:
 
-        print(f"Command sync error: {error}")
+        print("❌ Slash command sync failed:")
+        print(error)
 
 
-# =========================
+# ==========================================
 # START BOT
-# =========================
+# ==========================================
 
 if not TOKEN:
 
-    print("❌ ERROR: DISCORD_TOKEN is not set.")
+    print("")
+    print("================================")
+    print("❌ BOT TOKEN NOT FOUND")
+    print("================================")
+    print("Set one of these Wispbyte variables:")
+    print("DISCORD_TOKEN")
+    print("or")
+    print("TOKEN")
+    print("================================")
 
 else:
+
+    print("🔑 Bot token found.")
+    print("🚀 Starting bot...")
 
     bot.run(TOKEN)
